@@ -1,5 +1,5 @@
 /*
-Copyright 2011 OCAD University
+Copyright 2012 OCAD University
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -60,13 +60,8 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         var postData = '{"1234":"Another TEST"}';
         var userFile = "./static/data/1234.json";
         
-        // remove the user file for it to be re-created by the post action
-        fs.unlink(userFile, function (err) {
-            if (err) {
-                console.log("Error at removing the user file: " + err);
-            }
-            jqUnit.assertFalse("The user file " + userFile + " does NOT exist", path.existsSync(userFile));
-        });
+        // Make sure the nonexistence of the user file which will be re-created by the post action
+        jqUnit.assertFalse("The user file " + userFile + " does NOT exist", path.existsSync(userFile));
         
         var postRequest = http.request({  
             host: "localhost",  
@@ -82,6 +77,9 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             jqUnit.assertTrue("The user file " + userFile + " is created", path.existsSync(userFile));
 
             demo.serverTest.handleResponse("setting perferences", response, postData);
+            
+            // Clean up the newly-created user file
+            fs.unlink(userFile);
         }).on('error', function (e) {
             fluid.log("Got error: " + e.message);
         });
@@ -89,6 +87,6 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         // write data to post body  
         postRequest.write(postData);  
         postRequest.end();
-
+        
     });
 }());
