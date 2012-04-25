@@ -28,7 +28,12 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
     demo.serverTest.handleResponse = function (testDescription, response, expectedResponse) {
         jqUnit.assertTrue("Callback for " + testDescription + " is called", true);
 
-        response.on("data", function (responseData) {
+        var responseData = "";
+        response.on("data", function (chunk) {
+            responseData += chunk;
+        });
+
+        response.on("end", function () {
             fluid.log("Response from server: " + responseData + "; expected: " + expectedResponse);
             jqUnit.assertTrue("Response from the server is received", true);
             jqUnit.assertEquals("Response data is expected", expectedResponse, responseData);
@@ -50,6 +55,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             demo.serverTest.handleResponse("getting perferences", response, expectedResponse);
         }).on('error', function (e) {
             fluid.log("Got error: " + e.message);
+            jqUnit.start();
         });
     });
 
@@ -82,6 +88,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             fs.unlink(userFile);
         }).on('error', function (e) {
             fluid.log("Got error: " + e.message);
+            jqUnit.start();
         });
         
         // write data to post body  
