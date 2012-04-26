@@ -18,6 +18,12 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 
 (function ($) {
     $(document).ready(function () {
+        fluid.staticEnvironment.uiOptionsAfaStore = fluid.typeTag("fluid.videoPlayer.uiOptionsAfaStore");
+
+        fluid.demands("fluid.uiOptions.store", ["fluid.uiEnhancer", "fluid.videoPlayer.uiOptionsAfaStore"], {
+            funcName: "fluid.afaStore"
+        });
+
         fluid.pageEnhancer({
             tocTemplate: "../lib/infusion/components/tableOfContents/html/TableOfContents.html"
         });
