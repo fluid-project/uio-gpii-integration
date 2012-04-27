@@ -98,10 +98,17 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
     fluid.demands("demo.dataSource", ["demo.development"], {
         funcName: "demo.dataSource.file",
         args: {
-            url: "./static/data/%token.json",
+            url: "%root/static/data/%token.json",
             writable: true,
             termMap: {
                 token: "%token"
+            }
+        }
+    });
+    fluid.demands("demo.urlExpander", ["demo.development"], {
+        options: {
+            vars: {
+                root: path.join(__dirname, ".")
             }
         }
     });
