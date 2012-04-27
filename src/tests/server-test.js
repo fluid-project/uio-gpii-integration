@@ -19,6 +19,19 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         fs = require("fs"),
         demo = fluid.registerNamespace("demo");
 
+    fluid.staticEnvironment.gpiiTests = fluid.typeTag("demo.test");
+
+    fluid.demands("demo.dataSource", ["demo.development", "demo.test"], {
+        funcName: "demo.dataSource.file",
+        args: {
+            url: "./data/%token.json",
+            writable: true,
+            termMap: {
+                token: "%token"
+            }
+        }
+    });
+
     fluid.require("../dataSource.js", require);
     fluid.require("../utils.js", require);
     fluid.require("../server.js", require);
@@ -36,7 +49,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         response.on("end", function () {
             fluid.log("Response from server: " + responseData + "; expected: " + expectedResponse);
             jqUnit.assertTrue("Response from the server is received", true);
-            jqUnit.assertEquals("Response data is expected", expectedResponse, responseData);
+            jqUnit.assertDeepEq("Response data is expected", expectedResponse, JSON.parse(responseData));
             jqUnit.start();
         });
     };
@@ -45,7 +58,9 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 
         jqUnit.expect(3);
 
-        var expectedResponse = '{"test":"TEST"}';
+        var expectedResponse = {
+            test: "TEST"
+        };
         
         http.get({
             host: "localhost",
@@ -63,8 +78,10 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 
         jqUnit.expect(5);
 
-        var postData = '{"1234":"Another TEST"}';
-        var userFile = "./static/data/1234.json";
+        var postData = {
+            "1234": "Another TEST"
+        };
+        var userFile = "./data/1234.json";
         
         // Make sure the nonexistence of the user file which will be re-created by the post action
         jqUnit.assertFalse("The user file " + userFile + " does NOT exist", path.existsSync(userFile));
@@ -92,7 +109,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         });
         
         // write data to post body  
-        postRequest.write(postData);  
+        postRequest.write(JSON.stringify(postData));
         postRequest.end();
         
     });
