@@ -20,8 +20,26 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
     $(document).ready(function () {
         fluid.staticEnvironment.uiOptionsAfaStore = fluid.typeTag("fluid.videoPlayer.uiOptionsAfaStore");
 
+        fluid.afaStore.getToken = function (name) {
+            var urlToken = decodeURI(
+                (RegExp(name + '=' + '(.+?)(&|$)').exec(location.search)||[,null])[1]
+            );
+            // Default to the 123 which is an existing user preferences JSON file for demo in development mode.
+            return urlToken || "123";
+        };
+
         fluid.demands("fluid.uiOptions.store", ["fluid.uiEnhancer", "fluid.videoPlayer.uiOptionsAfaStore"], {
-            funcName: "fluid.afaStore"
+            funcName: "fluid.afaStore",
+            args: {
+                userToken: {
+                    expander: {
+                        type: "fluid.deferredInvokeCall",
+                        func: "fluid.afaStore.getToken",
+                        args: "token"
+                    }
+                },
+                prefsServerURL: "/store/"
+            }
         });
 
         fluid.pageEnhancer({
