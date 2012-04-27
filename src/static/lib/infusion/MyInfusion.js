@@ -23439,17 +23439,51 @@ var fluid_1_5 = fluid_1_5 || {};
             fluid.afaStore.UIOtoAfAUIOApprules
         ]);
         
-        // Remove the original AfA preferences that are supposed to be transformed from UIO
-        // so that the empty AfA settings won't re-filled by the original ones.
-        fluid.each(fluid.afaStore.UIOtoAfArules, function (garbage, path) {
-            path = path.replace(".0", "[0]");
-            path = path.replace(".1", "[1]");
-            
-            eval("delete that.originalAfAPrefs." + path);
-        })
-        
         // Preserve the AfA preferences that are not UIO supported
-        return $.extend(true, {}, that.originalAfAPrefs, UIOTransformedSettings);
+        if (that.originalAfAPrefs) {
+            // Remove the original AfA preferences that are supposed to be transformed from UIO
+            // so that the empty AfA settings won't re-filled by the original ones.
+            for (var path in fluid.afaStore.UIOtoAfArules) {
+                path = path.replace(".0", "[0]");
+                path = path.replace(".1", "[1]");
+                
+                if (fluid.afaStore.exists(path, that.originalAfAPrefs)) {
+                    // ToDo: eval is evil? Need a workaround?
+                    eval("delete that.originalAfAPrefs." + path);
+                }
+            }
+
+            return $.extend(true, {}, that.originalAfAPrefs, UIOTransformedSettings);
+        } else {
+            return UIOTransformedSettings;
+        }
+    };
+    
+    /**
+     * Recursive function that checks the existence of all the objects on the specified path.
+     * Return true if all the objects on the path exist.
+     * Return false if any of the objects on the path does not exit.
+     * Example, with given objPath "aa.bb.cc"
+     * if (targetObj.aa && targetObj.aa.bb && targetObj.aa.bb.cc) return true;
+     * else return false;
+     */
+    fluid.afaStore.exists = function (objPath, targetObj, numOfSection) {
+        numOfSection = numOfSection || 0;
+        
+        var currentPath = objPath.substring(0, objPath.indexOf(".", numOfSection));
+        currentPath = currentPath !== "" ? currentPath : objPath;  // get to the end of the objPath
+        
+        // ToDo: eval is evil? Need a workaround?
+        if (eval("typeof(targetObj." + currentPath + ")") === "undefined") {
+            return false;
+        } else {
+            // prevent the continuing loop after the full objPath is checked
+            if (currentPath !== objPath) {
+                return fluid.afaStore.exists(objPath, targetObj, currentPath.length + 1);
+            } else {
+                return true;
+            }
+        }
     };
 
     /**********************************************
@@ -23537,7 +23571,7 @@ var fluid_1_5 = fluid_1_5 || {};
             return {};
         }
 
-        return (Math.round(parseFloat(val / baseDocumentFontSize()) * 10) / 10).toString();
+        return Math.round(parseFloat(val / baseDocumentFontSize()) * 10) / 10;
     };
 
     /**
@@ -23577,6 +23611,17 @@ var fluid_1_5 = fluid_1_5 || {};
     };
     
     /**
+     * Convert a foreground/background colour combination into a theme name.
+     * Assumptions: If one of the colours is not specified, we cannot identify a theme.
+     */
+    fluid.afaStore.transform.strToNum = function (model, expandSpec, recurse) {
+        var val = fluid.get(model, expandSpec.path);
+        if (typeof (val) !== "undefined") {
+            return parseFloat(val);
+        }
+    };
+    
+    /**
      * Convert AfA-unsupported UIO settings into AfA preference string.
      */
     fluid.afaStore.transform.afaUnSupportedUIOSettings = function (model, expandSpec, recurse) {
@@ -23598,8 +23643,8 @@ var fluid_1_5 = fluid_1_5 || {};
             return fullVal;
         }
         
-        fullVal.application["name"] = "UI Options";
-        fullVal.application["id"] = "fluid.uiOptions";
+        fullVal.application.name = "UI Options";
+        fullVal.application.id = "fluid.uiOptions";
         
         return fullVal;
     };
@@ -23660,11 +23705,21 @@ var fluid_1_5 = fluid_1_5 || {};
                 "bgpath": "display.screenEnhancement.backgroundColor"
             }
         },
-        "lineSpacing": "display.application.parameters.lineSpacing",
+        "lineSpacing": {
+            "expander": {
+                "type": "fluid.afaStore.transform.strToNum",
+                "path": "display.application.parameters.lineSpacing"
+            }
+        },
         "links": "display.application.parameters.links",
         "inputsLarger": "display.application.parameters.inputsLarger",
         "layout": "display.application.parameters.layout",
-        "volume": "display.application.parameters.volume"
+        "volume": {
+            "expander": {
+                "type": "fluid.afaStore.transform.strToNum",
+                "path": "display.application.parameters.volume"
+            }
+        }
     };
 
     fluid.afaStore.AfAtoUIOAdaptPrefRules = {
