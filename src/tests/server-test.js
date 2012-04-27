@@ -24,10 +24,17 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
     fluid.demands("demo.dataSource", ["demo.development", "demo.test"], {
         funcName: "demo.dataSource.file",
         args: {
-            url: "./data/%token.json",
+            url: "%root/tests/data/%token.json",
             writable: true,
             termMap: {
                 token: "%token"
+            }
+        }
+    });
+    fluid.demands("demo.urlExpander", ["demo.development", "demo.test"], {
+        options: {
+            vars: {
+                root: path.join(__dirname, "..")
             }
         }
     });
@@ -81,7 +88,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         var postData = {
             "1234": "Another TEST"
         };
-        var userFile = "./data/1234.json";
+        var userFile = path.join(__dirname, "./data/1234.json");
         
         // Make sure the nonexistence of the user file which will be re-created by the post action
         jqUnit.assertFalse("The user file " + userFile + " does NOT exist", path.existsSync(userFile));
@@ -96,13 +103,12 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
                 "Accept": "application/json"
             }
         }, function (response) {
-            console.log("in");
-            jqUnit.assertTrue("The user file " + userFile + " is created", path.existsSync(userFile));
-
+            response.on("end", function () {
+                jqUnit.assertTrue("The user file " + userFile + " is created", path.existsSync(userFile));
+                // Clean up the newly-created user file
+                fs.unlink(userFile);
+            });
             demo.serverTest.handleResponse("setting perferences", response, postData);
-            
-            // Clean up the newly-created user file
-            fs.unlink(userFile);
         }).on('error', function (e) {
             fluid.log("Got error: " + e.message);
             jqUnit.start();
