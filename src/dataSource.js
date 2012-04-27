@@ -181,7 +181,6 @@
     };
 
     demo.dataSource.resolveUrl = function (expand, url, termMap, directModel) {
-        debugger;
         var map = fluid.copy(termMap);
         map = fluid.transform(map, function (entry) {
             var encode = false;

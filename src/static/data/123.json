@@ -1,1 +1,29 @@
-{"display":{"screenEnhancement":{"fontSize":16},"application":{"parameters":{"lineSpacing":"1","links":false,"inputsLarger":false,"layout":false,"volume":"50"},"name":"UI Options","id":"fluid.uiOptions"}},"control":{"structuralNavigation":{"tableOfContents":false}},"content":{"adaptationPreference":{"0":{},"1":{}}}}
+{
+    "display": {
+        "screenEnhancement": {
+            "fontSize": 16
+        },
+        "application": {
+            "parameters": {
+                "lineSpacing": "1",
+                "links": false,
+                "inputsLarger": false,
+                "layout": false,
+                "volume": "50"
+            },
+            "name": "UI Options",
+            "id": "fluid.uiOptions"
+        }
+    },
+    "control": {
+        "structuralNavigation": {
+            "tableOfContents": false
+        }
+    },
+    "content": {
+        "adaptationPreference": {
+            "0": {},
+            "1": {}
+        }
+    }
+}
