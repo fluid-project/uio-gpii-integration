@@ -10308,14 +10308,21 @@ var fluid = fluid || fluid_1_5;
         return fluid.filterKeys(toCensor, keys, true);
     };
     
-    /** Return the keys in the supplied object as an array **/
-    fluid.keys = function (obj) {
-        var togo = [];
-        fluid.each(obj, function (value, key) {
-            togo.push(key);
-        });
-        return togo;
+    fluid.makeFlatten = function (index) {
+        return function (obj) {
+            var togo = [];
+            fluid.each(obj, function (value, key) {
+                togo.push(arguments[index]);
+            });
+            return togo;
+        }; 
     };
+    
+    /** Return the keys in the supplied object as an array **/
+    fluid.keys = fluid.makeFlatten(1); 
+    
+    /** Return the values in the supplied object as an array **/
+    fluid.values = fluid.makeFlatten(0);
     
     /** 
      * Searches through the supplied object, and returns <code>true</code> if the supplied value
@@ -14030,6 +14037,50 @@ var fluid_1_5 = fluid_1_5 || {};
         return that;
     };
     
+    /** "Global Dismissal Handler" for the entire page. Attaches a click handler to the 
+     * document root that will cause dismissal of any elements (typically dialogs) which 
+     * have registered themselves. Dismissal through this route will automatically clean up 
+     * the record - however, the dismisser themselves must take care to deregister in the case 
+     * dismissal is triggered through the dialog interface itself. This component can also be 
+     * automatically configured by fluid.deadMansBlur by means of the "cancelByDefault" option */ 
+     
+    var dismissList = {}; 
+     
+    $(document).click(function (event) { 
+        var target = event.target; 
+        while (target) { 
+            if (dismissList[target.id]) { 
+                return; 
+            } 
+            target = target.parentNode; 
+        } 
+        fluid.each(dismissList, function (dismissFunc, key) { 
+            dismissFunc(event); 
+            delete dismissList[key]; 
+        }); 
+    });
+    // TODO: extend a configurable equivalent of the above dealing with "focusin" events
+     
+    /** Accepts a free hash of nodes and an optional "dismissal function".
+     * If dismissFunc is set, this "arms" the dismissal system, such that when a click
+     * is received OUTSIDE any of the hierarchy covered by "nodes", the dismissal function
+     * will be executed.
+     */ 
+    fluid.globalDismissal = function (nodes, dismissFunc) { 
+        fluid.each(nodes, function (node) {
+          // Don't bother to use the real id if it is from a foreign document - we will never receive events
+          // from it directly in any case - and foreign documents may be under the control of malign fiends
+          // such as tinyMCE who allocate the same id to everything
+            var id = fluid.unwrap(node).ownerDocument === document? fluid.allocateSimpleId(node) : fluid.allocateGuid();
+            if (dismissFunc) { 
+                dismissList[id] = dismissFunc; 
+            } 
+            else { 
+                delete dismissList[id]; 
+            } 
+        }); 
+    }; 
+    
     /** Sets an interation on a target control, which morally manages a "blur" for
      * a possibly composite region.
      * A timed blur listener is set on the control, which waits for a short period of
@@ -14045,23 +14096,24 @@ var fluid_1_5 = fluid_1_5 || {};
         var that = fluid.initLittleComponent("fluid.deadMansBlur", options);
         that.blurPending = false;
         that.lastCancel = 0;
-        $(control).bind("focusout", function (event) {
-            fluid.log("Starting blur timer for element " + fluid.dumpEl(event.target));
-            var now = new Date().getTime();
-            fluid.log("back delay: " + (now - that.lastCancel));
-            if (now - that.lastCancel > that.options.backDelay) {
-                that.blurPending = true;
-            }
-            setTimeout(function () {
-                if (that.blurPending) {
-                    that.options.handler(control);
-                }
-            }, that.options.delay);
-        });
         that.canceller = function (event) {
             fluid.log("Cancellation through " + event.type + " on " + fluid.dumpEl(event.target)); 
-            that.lastCancel = new Date().getTime();
+            that.lastCancel = Date.now();
             that.blurPending = false;
+        };
+        that.noteProceeded = function () {
+            fluid.globalDismissal(that.options.exclusions);
+        };
+        that.reArm = function () {
+            fluid.globalDismissal(that.options.exclusions, that.proceed);
+        };
+        that.addExclusion = function (exclusions) {
+            fluid.globalDismissal(exclusions, that.proceed);
+        };
+        that.proceed = function (event) {
+            fluid.log("Direct proceed through " + event.type + " on " + fluid.dumpEl(event.target));
+            that.blurPending = false;
+            that.options.handler(control);
         };
         fluid.each(that.options.exclusions, function (exclusion) {
             exclusion = $(exclusion);
@@ -14072,6 +14124,24 @@ var fluid_1_5 = fluid_1_5 || {};
     // Mousedown is added for FLUID-4212, as a result of Chrome bug 6759, 14204
             });
         });
+        if (!that.options.cancelByDefault) {
+            $(control).bind("focusout", function (event) {
+                fluid.log("Starting blur timer for element " + fluid.dumpEl(event.target));
+                var now = Date.now();
+                fluid.log("back delay: " + (now - that.lastCancel));
+                if (now - that.lastCancel > that.options.backDelay) {
+                    that.blurPending = true;
+                }
+                setTimeout(function () {
+                    if (that.blurPending) {
+                        that.options.handler(control);
+                    }
+                }, that.options.delay);
+            });
+        }
+        else {
+            that.reArm();
+        }
         return that;
     };
 
@@ -23428,6 +23498,7 @@ var fluid_1_5 = fluid_1_5 || {};
         that.originalAfAPrefs = settings;
         
         return fluid.model.transformWithRules(settings, [
+            fluid.afaStore.AfAtoUIOScreenEnhanceRules,
             fluid.afaStore.AfAtoUIOAdaptPrefRules,
             fluid.afaStore.AfAtoUIOrules
         ]);
@@ -23473,8 +23544,12 @@ var fluid_1_5 = fluid_1_5 || {};
         var currentPath = objPath.substring(0, objPath.indexOf(".", numOfSection));
         currentPath = currentPath !== "" ? currentPath : objPath;  // get to the end of the objPath
         
+        // remove the ending array identifier
+        var pathWithoutArray = currentPath.substring(currentPath.length-1) === "]" ?
+                currentPath.substring(0, currentPath.lastIndexOf("[")) : currentPath;
+        
         // ToDo: eval is evil? Need a workaround?
-        if (eval("typeof(targetObj." + currentPath + ")") === "undefined") {
+        if (eval("typeof(targetObj." + pathWithoutArray + ")") === "undefined") {
             return false;
         } else {
             // prevent the continuing loop after the full objPath is checked
@@ -23558,6 +23633,35 @@ var fluid_1_5 = fluid_1_5 || {};
         return result;
     };
     
+    /**
+     * Intermediate process: remove the screenEnhancement applications that are not UIO specific
+     */
+    fluid.afaStore.transform.simplifyScreenEnhance = function (model, expandSpec, recurse) {
+        var val = fluid.get(model, expandSpec.path);
+        if (!val) {
+            return {};
+        }
+        if (val.applications) {
+            var apps = val.applications;
+            var resultApps = [];
+    
+            for (var i in apps) {
+                var oneApp = apps[i];
+                if (oneApp.name === "UI Options" && oneApp.id === "fluid.uiOptions") {
+                    resultApps.push(oneApp);
+                    break;
+                }
+            }
+            
+            if (resultApps.length > 0) {
+                val.applications = resultApps;  // UIO application is the only element in "applications" array
+            } else {
+                delete val.applications;  // get rid of "applications" element if no UIO specific settings
+            }
+        }
+        return val;
+    };
+    
     var baseDocumentFontSize = function () {
         return parseFloat($("html").css("font-size")); // will be the float # of pixels
     };
@@ -23638,13 +23742,13 @@ var fluid_1_5 = fluid_1_5 || {};
      */
     fluid.afaStore.transform.fleshOutUIOSettings = function (model, expandSpec, recurse) {
         var fullVal = fluid.get(model, expandSpec.path);
-        var val = fluid.get(fullVal, "application.parameters");
+        var val = fluid.get(fullVal, "screenEnhancement.applications.0.parameters");
         if (!val) {
             return fullVal;
         }
         
-        fullVal.application.name = "UI Options";
-        fullVal.application.id = "fluid.uiOptions";
+        fullVal.screenEnhancement.applications[0].name = "UI Options";
+        fullVal.screenEnhancement.applications[0].id = "fluid.uiOptions";
         
         return fullVal;
     };
@@ -23708,16 +23812,16 @@ var fluid_1_5 = fluid_1_5 || {};
         "lineSpacing": {
             "expander": {
                 "type": "fluid.afaStore.transform.strToNum",
-                "path": "display.application.parameters.lineSpacing"
+                "path": "display.screenEnhancement.applications.0.parameters.lineSpacing"
             }
         },
-        "links": "display.application.parameters.links",
-        "inputsLarger": "display.application.parameters.inputsLarger",
-        "layout": "display.application.parameters.layout",
+        "links": "display.screenEnhancement.applications.0.parameters.links",
+        "inputsLarger": "display.screenEnhancement.applications.0.parameters.inputsLarger",
+        "layout": "display.screenEnhancement.applications.0.parameters.layout",
         "volume": {
             "expander": {
                 "type": "fluid.afaStore.transform.strToNum",
-                "path": "display.application.parameters.volume"
+                "path": "display.screenEnhancement.applications.0.parameters.volume"
             }
         }
     };
@@ -23730,6 +23834,17 @@ var fluid_1_5 = fluid_1_5 || {};
             }
         },
         "display": "display",
+        "control": "control"
+    };
+
+    fluid.afaStore.AfAtoUIOScreenEnhanceRules = {
+        "display.screenEnhancement": {
+            "expander": {
+                "type": "fluid.afaStore.transform.simplifyScreenEnhance",
+                "path": "display.screenEnhancement"
+            }
+        },
+        "content": "content",
         "control": "control"
     };
 
@@ -23807,31 +23922,31 @@ var fluid_1_5 = fluid_1_5 || {};
                 }
             }
         },
-        "display.application.parameters.lineSpacing": {
+        "display.screenEnhancement.applications.0.parameters.lineSpacing": {
             "expander": {
                 "type": "fluid.afaStore.transform.afaUnSupportedUIOSettings",
                 "path": "lineSpacing"
             }
         },
-        "display.application.parameters.links": {
+        "display.screenEnhancement.applications.0.parameters.links": {
             "expander": {
                 "type": "fluid.afaStore.transform.afaUnSupportedUIOSettings",
                 "path": "links"
             }
         },
-        "display.application.parameters.inputsLarger": {
+        "display.screenEnhancement.applications.0.parameters.inputsLarger": {
             "expander": {
                 "type": "fluid.afaStore.transform.afaUnSupportedUIOSettings",
                 "path": "inputsLarger"
             }
         },
-        "display.application.parameters.layout": {
+        "display.screenEnhancement.applications.0.parameters.layout": {
             "expander": {
                 "type": "fluid.afaStore.transform.afaUnSupportedUIOSettings",
                 "path": "layout"
             }
         },
-        "display.application.parameters.volume": {
+        "display.screenEnhancement.applications.0.parameters.volume": {
             "expander": {
                 "type": "fluid.afaStore.transform.afaUnSupportedUIOSettings",
                 "path": "volume"
