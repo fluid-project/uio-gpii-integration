@@ -23495,7 +23495,7 @@ var fluid_1_5 = fluid_1_5 || {};
 
     fluid.afaStore.AfAtoUIO = function (settings, that) {
         // Save the original AfA settings in order to preserve UIO unsupported AfA preferences
-        that.originalAfAPrefs = settings;
+        that.originalAfAPrefs = fluid.copy(settings);
         
         return fluid.model.transformWithRules(settings, [
             fluid.afaStore.AfAtoUIOScreenEnhanceRules,
@@ -23512,53 +23512,67 @@ var fluid_1_5 = fluid_1_5 || {};
         
         // Preserve the AfA preferences that are not UIO supported
         if (that.originalAfAPrefs) {
+            var target = fluid.copy(that.originalAfAPrefs);
+
             // Remove the original AfA preferences that are supposed to be transformed from UIO
             // so that the empty AfA settings won't re-filled by the original ones.
-            for (var path in fluid.afaStore.UIOtoAfArules) {
-                path = path.replace(".0", "[0]");
-                path = path.replace(".1", "[1]");
-                
-                if (fluid.afaStore.exists(path, that.originalAfAPrefs)) {
-                    // ToDo: eval is evil? Need a workaround?
-                    eval("delete that.originalAfAPrefs." + path);
+            fluid.each(fluid.afaStore.UIOtoAfArules, function (value, key) {
+                if (fluid.get(target, key)) {
+                    var segs = key.split("."),
+                        thisKey = segs.pop();
+                    
+//                    if (isNaN(parseInt(thisKey))) {
+                        // delete an object
+                        delete fluid.get(target, segs.join("."))[thisKey];
+//                    } else {
+//                        // delete array element
+//                        fluid.get(target, segs.join(".")).splice(parseInt(thisKey), 1);
+//                    }
                 }
-            }
-
-            return $.extend(true, {}, that.originalAfAPrefs, UIOTransformedSettings);
+            });
+            
+            fluid.merge({
+//                "content.adaptationPreference": fluid.afaStore.mergeArray,
+                "display.screenEnhancement.applications": fluid.afaStore.mergeApps
+            }, target, UIOTransformedSettings);
+            return target;
         } else {
+//            return fluid.merge({
+//                "content.adaptationPreference": fluid.afaStore.mergeArray,
+//                "display.screenEnhancement.applications": fluid.afaStore.mergeApps
+//            }, {}, UIOTransformedSettings);
             return UIOTransformedSettings;
         }
     };
     
-    /**
-     * Recursive function that checks the existence of all the objects on the specified path.
-     * Return true if all the objects on the path exist.
-     * Return false if any of the objects on the path does not exit.
-     * Example, with given objPath "aa.bb.cc"
-     * if (targetObj.aa && targetObj.aa.bb && targetObj.aa.bb.cc) return true;
-     * else return false;
-     */
-    fluid.afaStore.exists = function (objPath, targetObj, numOfSection) {
-        numOfSection = numOfSection || 0;
+    
+//    fluid.afaStore.mergeArray = function (target, source) {
+//        target = target || [];
+//        
+//        fluid.each(source, function (oneSource) {
+//            target.push(oneSource);
+//        });
+//        return target;
+//    };
+    
+    fluid.afaStore.mergeApps = function (target, source) {
+        target = target || [];
         
-        var currentPath = objPath.substring(0, objPath.indexOf(".", numOfSection));
-        currentPath = currentPath !== "" ? currentPath : objPath;  // get to the end of the objPath
+        var sourceID = source[0].id;
         
-        // remove the ending array identifier
-        var pathWithoutArray = currentPath.substring(currentPath.length-1) === "]" ?
-                currentPath.substring(0, currentPath.lastIndexOf("[")) : currentPath;
-        
-        // ToDo: eval is evil? Need a workaround?
-        if (eval("typeof(targetObj." + pathWithoutArray + ")") === "undefined") {
-            return false;
-        } else {
-            // prevent the continuing loop after the full objPath is checked
-            if (currentPath !== objPath) {
-                return fluid.afaStore.exists(objPath, targetObj, currentPath.length + 1);
-            } else {
-                return true;
+        var sourceIndex = fluid.find(target, function (app, index) {
+            if (app.id === sourceID) {
+                return index;
             }
+        });
+        
+        if (!sourceIndex && sourceIndex !== 0) {
+            target.push(source[0]);
+            return target;
         }
+        
+        target[sourceIndex] = source[0];
+        return target;
     };
 
     /**********************************************
@@ -23731,7 +23745,7 @@ var fluid_1_5 = fluid_1_5 || {};
     fluid.afaStore.transform.afaUnSupportedUIOSettings = function (model, expandSpec, recurse) {
         var val = fluid.get(model, expandSpec.path);
         if (!val && val !== false) {
-            return {};
+            return;
         }
         
         return typeof val === "number" ? val.toString() : val;
@@ -23753,6 +23767,11 @@ var fluid_1_5 = fluid_1_5 || {};
         return fullVal;
     };
 
+    fluid.afaStore.transform.createAppsArray = function (model, expandSpec) {
+//        fluid.set(model, "display.screenEnhancement.applications", []);
+        return [];
+    };
+    
     /**********************************************
      * Transformation Rules
      **********************************************/
@@ -23885,17 +23904,17 @@ var fluid_1_5 = fluid_1_5 || {};
                 "path": "toc"
             }
         },
-        "content.adaptationPreference.0": {
-            "expander": {
-                "type": "fluid.afaStore.transform.afaCaption",
-                "path": "captions"
-            }
-        },
         "_comment": "NB: This will always place transcripts second in the array, even if there are no captions",
         "content.adaptationPreference.1": {
             "expander": {
                 "type": "fluid.afaStore.transform.afaTranscript",
                 "path": "transcripts"
+            }
+        },
+        "content.adaptationPreference.0": {
+            "expander": {
+                "type": "fluid.afaStore.transform.afaCaption",
+                "path": "captions"
             }
         },
         "display.screenEnhancement.foregroundColor": {
@@ -23964,6 +23983,7 @@ var fluid_1_5 = fluid_1_5 || {};
             }
         }
     };
+    
 })(jQuery, fluid_1_5);
 /*
 Copyright 2009 University of Toronto
