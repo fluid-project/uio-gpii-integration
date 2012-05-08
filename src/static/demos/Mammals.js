@@ -21,11 +21,15 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         fluid.staticEnvironment.uiOptionsAfaStore = fluid.typeTag("fluid.videoPlayer.uiOptionsAfaStore");
 
         fluid.afaStore.getToken = function (name) {
-            var urlToken = decodeURI(
-                (RegExp(name + '=' + '(.+?)(&|$)').exec(location.search)||[,null])[1]
-            );
-            // Default to the 123 which is an existing user preferences JSON file for demo in development mode.
-            return urlToken || "123";
+            name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+            var regexS = "[\\?&]" + name + "=([^&#]*)";
+            var regex = new RegExp(regexS);
+            var results = regex.exec(window.location.href);
+            if (results === null) {
+                return "123";
+            } else {
+                return results[1];
+            }
         };
 
         fluid.demands("fluid.uiOptions.store", ["fluid.uiEnhancer", "fluid.videoPlayer.uiOptionsAfaStore"], {
