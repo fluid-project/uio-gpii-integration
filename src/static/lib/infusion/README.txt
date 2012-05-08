@@ -1,4 +1,4 @@
-MyInfusion was built from an unreleased version of Infusion (9f3c4ba14a5a58285ddb5980f9af0f79bda915d5), 
+MyInfusion was built from an unreleased version of Infusion (9346ce5eae1cba1b6df9c02a6a1d48ed1a581ddd), 
 cindyli branch FLUID-1653 (https://github.com/cindyli/infusion/tree/FLUID-1653) using the following command:
 
 Build the minified Infusion:

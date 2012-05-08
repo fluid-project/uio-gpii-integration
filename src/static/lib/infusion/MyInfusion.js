@@ -23989,7 +23989,7 @@ var fluid_1_5 = fluid_1_5 || {};
     fluid.afaStore.fetch = function (that) {
         $.get(fluid.afaStore.getServerURL(that.options.prefsServerURL, that.options.userToken), function (data) {
             that.events.settingsReady.fire($.extend(true, {}, that.options.defaultSiteSettings, that.AfAtoUIO(data)));
-        });
+        }, "json");
     };
 
     fluid.afaStore.save = function (settings, that) {
@@ -24008,21 +24008,17 @@ var fluid_1_5 = fluid_1_5 || {};
         // Save the original AfA settings in order to preserve UIO unsupported AfA preferences
         that.originalAfAPrefs = fluid.copy(settings);
         
-        var interSetting1 = fluid.model.transformWithRules(settings, fluid.afaStore.AfAtoUIOScreenEnhanceRules);
-        var interSetting2 = fluid.model.transformWithRules(interSetting1, fluid.afaStore.AfAtoUIOAdaptPrefRules);
-        var finalSetting = fluid.model.transformWithRules(interSetting2, fluid.afaStore.AfAtoUIOrules);
-        
-        return finalSetting;
+        return fluid.model.transform.sequence(settings, [
+            fluid.afaStore.AfAtoUIOScreenEnhanceRules, 
+            fluid.afaStore.AfAtoUIOAdaptPrefRules,
+            fluid.afaStore.AfAtoUIOrules]);
     };
     
     fluid.afaStore.UIOtoAfA = function (settings, that) {
-        var schema = {
-                "display.screenEnhancement.applications": "array",
-                "content.adaptationPreference": "array"
-            };
-
-        var interSetting1 = fluid.model.transformWithRules(settings, fluid.afaStore.UIOtoAfArules, {flatSchema: schema});
-        var UIOTransformedSettings = fluid.model.transformWithRules(interSetting1, fluid.afaStore.UIOtoAfAUIOApprules);
+        var UIOTransformedSettings = fluid.model.transform.sequence(settings, [
+            fluid.afaStore.UIOtoAfArules, 
+            fluid.afaStore.UIOtoAfAUIOApprules
+        ], {flatSchema: fluid.afaStore.UIOtoAfAschema});
         
         // Preserve the AfA preferences that are not UIO supported
         if (that.originalAfAPrefs) {
@@ -24167,7 +24163,7 @@ var fluid_1_5 = fluid_1_5 || {};
     fluid.afaStore.transform.fontFactor = function (expanded, expander, expandSpec) {
         var val = fluid.get(expander.source, expandSpec.inputPath);
         if (!val) {
-            return {};
+            return;
         }
 
         return Math.round(parseFloat(val / baseDocumentFontSize()) * 10) / 10;
@@ -24265,7 +24261,7 @@ var fluid_1_5 = fluid_1_5 || {};
                     "fantasy": "default",
                     "cursive": "default",
                     "undefined": {
-                        undefinedOutputValue: true,
+                        undefinedOutputValue: true
                     }
                 }
             }
@@ -24345,7 +24341,12 @@ var fluid_1_5 = fluid_1_5 || {};
         "content": "content",
         "control": "control"
     };
-
+    
+    fluid.afaStore.UIOtoAfAschema = {
+        "display.screenEnhancement.applications": "array",
+        "content.adaptationPreference": "array"
+    };
+    
     fluid.afaStore.UIOtoAfArules = {
         "display.screenEnhancement.fontFace": {
             "expander": {
@@ -24353,7 +24354,7 @@ var fluid_1_5 = fluid_1_5 || {};
                 "inputPath": "textFont",
                 "options": {
                     "times": {
-                       "outputValue": {
+                        "outputValue": {
                             "fontName": ["Times New Roman"],
                             "genericFontFace": "serif"
                         }
@@ -24374,10 +24375,10 @@ var fluid_1_5 = fluid_1_5 || {};
                         "outputValue": {
                             "fontName": ["Comic Sans"],
                             "genericFontFace": "sans serif"
-                    }
+                        }
                     },
                     "undefined": {
-                        undefinedOutputValue: true,
+                        undefinedOutputValue: true
                     }
                 }
             }
@@ -24417,7 +24418,7 @@ var fluid_1_5 = fluid_1_5 || {};
                     "wb": "white",
                     "bw": "black",
                     "undefined": {
-                        undefinedOutputValue: true,
+                        undefinedOutputValue: true
                     }
                 }
             }
@@ -24432,7 +24433,7 @@ var fluid_1_5 = fluid_1_5 || {};
                     "wb": "black",
                     "bw": "white",
                     "undefined": {
-                        undefinedOutputValue: true,
+                        undefinedOutputValue: true
                     }
                 }
             }
