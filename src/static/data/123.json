@@ -1,29 +1,42 @@
 {
-    "display": {
-        "screenEnhancement": {
-            "fontSize": 16
-        },
-        "application": {
-            "parameters": {
-                "lineSpacing": "1",
-                "links": false,
-                "inputsLarger": false,
-                "layout": false,
-                "volume": "50"
-            },
-            "name": "UI Options",
-            "id": "fluid.uiOptions"
-        }
-    },
     "control": {
         "structuralNavigation": {
             "tableOfContents": false
         }
     },
     "content": {
-        "adaptationPreference": {
-            "0": {},
-            "1": {}
+        "adaptationPreference": [
+            {
+                "adaptationType": "caption",
+                "language": "fr"
+            },
+            {}
+        ]
+    },
+    "display": {
+        "screenEnhancement": {
+            "applications": [
+                {
+                    "parameters": {
+                        "links": false,
+                        "layout": false,
+                        "volume": "50",
+                        "lineSpacing": "1",
+                        "inputsLarger": false
+                    },
+                    "name": "UI Options",
+                    "id": "fluid.uiOptions"
+                }
+            ],
+            "fontFace": {
+                "fontName": [
+                    "Comic Sans"
+                ],
+                "genericFontFace": "sans serif"
+            },
+            "fontSize": 19.2,
+            "foregroundColor": "white",
+            "backgroundColor": "black"
         }
     }
 }
