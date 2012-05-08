@@ -142,7 +142,7 @@
 
     demo.dataSource.DBSet = function (responseParser, resolveUrl, directModel, model, callback) {
         var modelData = typeof model === "string" ? model : JSON.stringify(model);
-        var req = dbAll(resolveUrl, directModel, "PUT", function (data) {
+        var req = dbAll(resolveUrl, directModel, "POST", function (data) {
             data = JSON.parse(data);
             if (!data.ok) {
                 req.emit("error", data);
